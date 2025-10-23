@@ -6,7 +6,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'healthy',
     service: 'JIRA MCP Server',
-    version: '2.0.0',
+    version: '2.1.0',
     timestamp: new Date().toISOString()
   });
 }

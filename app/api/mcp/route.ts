@@ -55,6 +55,22 @@ export async function POST(request: NextRequest) {
         result = await jira.getIssueTransitions(args.issueKey);
         break;
 
+      case 'link_issues':
+        result = await jira.linkIssues(args.type, args.inwardIssueKey, args.outwardIssueKey, args.comment);
+        break;
+
+      case 'get_issue_links':
+        result = await jira.getIssueLinks(args.issueKey);
+        break;
+
+      case 'get_dependency_tree':
+        result = await jira.getDependencyTree(args.issueKey);
+        break;
+
+      case 'get_link_types':
+        result = await jira.getLinkTypes();
+        break;
+
       default:
         return NextResponse.json({ error: `Unknown tool: ${tool}` }, { status: 400 });
     }
@@ -73,7 +89,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   return NextResponse.json({
     service: 'JIRA MCP Server',
-    version: '2.0.0',
+    version: '2.1.0',
     availableTools: [
       'search_issues',
       'get_issue',
@@ -81,7 +97,11 @@ export async function GET() {
       'update_issue',
       'add_comment',
       'transition_issue',
-      'get_issue_transitions'
+      'get_issue_transitions',
+      'link_issues',
+      'get_issue_links',
+      'get_dependency_tree',
+      'get_link_types'
     ],
     usage: 'POST to this endpoint with tool name and arguments'
   });
