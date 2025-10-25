@@ -29,8 +29,12 @@ export class JiraClient {
   }
 
   async searchIssues(jql: string, maxResults = 50) {
-    const response = await this.client.get('/rest/api/3/search', {
-      params: { jql, maxResults }
+    const response = await this.client.get('/rest/api/3/search/jql', {
+      params: {
+        jql,
+        maxResults,
+        fields: '*all' // Request all fields to match old API behavior
+      }
     });
     return response.data;
   }
