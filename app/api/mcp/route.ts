@@ -71,6 +71,58 @@ export async function POST(request: NextRequest) {
         result = await jira.getLinkTypes();
         break;
 
+      case 'get_boards':
+        result = await jira.getBoards(args.type, args.name);
+        break;
+
+      case 'get_board_details':
+        result = await jira.getBoardDetails(args.boardId);
+        break;
+
+      case 'get_board_issues':
+        result = await jira.getBoardIssues(args.boardId, args.jql, args.maxResults);
+        break;
+
+      case 'get_current_user':
+        result = await jira.getCurrentUser();
+        break;
+
+      case 'search_users':
+        result = await jira.searchUsers(args.query, args.maxResults);
+        break;
+
+      case 'get_user_details':
+        result = await jira.getUserDetails(args.accountId);
+        break;
+
+      case 'get_projects':
+        result = await jira.getProjects();
+        break;
+
+      case 'get_project_details':
+        result = await jira.getProjectDetails(args.projectKey);
+        break;
+
+      case 'add_worklog':
+        result = await jira.addWorklog(args.issueKey, args.timeSpentSeconds, args.comment, args.started);
+        break;
+
+      case 'get_worklogs':
+        result = await jira.getWorklogs(args.issueKey);
+        break;
+
+      case 'get_server_info':
+        result = await jira.getServerInfo();
+        break;
+
+      case 'create_sprint':
+        result = await jira.createSprint(args.name, args.boardId, args.startDate, args.endDate, args.goal);
+        break;
+
+      case 'update_sprint':
+        result = await jira.updateSprint(args.sprintId, args.updates);
+        break;
+
       default:
         return NextResponse.json({ error: `Unknown tool: ${tool}` }, { status: 400 });
     }
@@ -101,7 +153,20 @@ export async function GET() {
       'link_issues',
       'get_issue_links',
       'get_dependency_tree',
-      'get_link_types'
+      'get_link_types',
+      'get_boards',
+      'get_board_details',
+      'get_board_issues',
+      'get_current_user',
+      'search_users',
+      'get_user_details',
+      'get_projects',
+      'get_project_details',
+      'add_worklog',
+      'get_worklogs',
+      'get_server_info',
+      'create_sprint',
+      'update_sprint'
     ],
     usage: 'POST to this endpoint with tool name and arguments'
   });

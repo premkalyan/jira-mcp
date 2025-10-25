@@ -186,4 +186,127 @@ export class JiraClient {
     const response = await this.client.get('/rest/api/3/issueLinkType');
     return response.data;
   }
+
+  // Board operations
+  async getBoards(type?: string, name?: string) {
+    const response = await this.client.get('/rest/agile/1.0/board', {
+      params: { type, name }
+    });
+    return response.data;
+  }
+
+  async getBoardDetails(boardId: number) {
+    const response = await this.client.get(`/rest/agile/1.0/board/${boardId}`);
+    return response.data;
+  }
+
+  async getBoardIssues(boardId: number, jql?: string, maxResults = 50) {
+    const response = await this.client.get(`/rest/agile/1.0/board/${boardId}/issue`, {
+      params: { jql, maxResults }
+    });
+    return response.data;
+  }
+
+  // User operations
+  async getCurrentUser() {
+    const response = await this.client.get('/rest/api/3/myself');
+    return response.data;
+  }
+
+  async searchUsers(query: string, maxResults = 50) {
+    const response = await this.client.get('/rest/api/3/user/search', {
+      params: { query, maxResults }
+    });
+    return response.data;
+  }
+
+  async getUserDetails(accountId: string) {
+    const response = await this.client.get('/rest/api/3/user', {
+      params: { accountId }
+    });
+    return response.data;
+  }
+
+  // Project operations
+  async getProjects() {
+    const response = await this.client.get('/rest/api/3/project');
+    return response.data;
+  }
+
+  async getProjectDetails(projectKey: string) {
+    const response = await this.client.get(`/rest/api/3/project/${projectKey}`);
+    return response.data;
+  }
+
+  // Worklog operations
+  async addWorklog(issueKey: string, timeSpentSeconds: number, comment?: string, started?: string) {
+    const payload: Record<string, unknown> = {
+      timeSpentSeconds
+    };
+
+    if (started) {
+      payload.started = started;
+    }
+
+    if (comment) {
+      payload.comment = {
+        type: 'doc',
+        version: 1,
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: comment }
+            ]
+          }
+        ]
+      };
+    }
+
+    const response = await this.client.post(
+      `/rest/api/3/issue/${issueKey}/worklog`,
+      payload,
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    return response.data;
+  }
+
+  async getWorklogs(issueKey: string) {
+    const response = await this.client.get(`/rest/api/3/issue/${issueKey}/worklog`);
+    return response.data;
+  }
+
+  // Server information
+  async getServerInfo() {
+    const response = await this.client.get('/rest/api/3/serverInfo');
+    return response.data;
+  }
+
+  // Sprint operations
+  async createSprint(name: string, boardId: number, startDate?: string, endDate?: string, goal?: string) {
+    const payload: Record<string, unknown> = {
+      name,
+      originBoardId: boardId
+    };
+
+    if (startDate) payload.startDate = startDate;
+    if (endDate) payload.endDate = endDate;
+    if (goal) payload.goal = goal;
+
+    const response = await this.client.post(
+      '/rest/agile/1.0/sprint',
+      payload,
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    return response.data;
+  }
+
+  async updateSprint(sprintId: number, updates: { name?: string; state?: string; startDate?: string; endDate?: string; goal?: string }) {
+    const response = await this.client.put(
+      `/rest/agile/1.0/sprint/${sprintId}`,
+      updates,
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    return response.data;
+  }
 }
