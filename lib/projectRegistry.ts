@@ -24,8 +24,8 @@ export async function getJiraCredentials(apiKey: string): Promise<JiraCredential
   }
 
   return {
-    url: project.configs.jira.url,
+    url: project.configs.jira.baseUrl,
     email: project.configs.jira.email,
-    token: project.configs.jira.api_token
+    token: project.configs.jira.apiToken
   };
 }
