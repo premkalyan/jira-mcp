@@ -1,19 +1,13 @@
 {
-  "version": 2,
-  "builds": [
+  "buildCommand": "npm run build",
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/mcp",
-      "dest": "/api/mcp.js"
+      "source": "/api/mcp",
+      "destination": "/api/mcp.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "/api/mcp.js"
+      "source": "/(.*)",
+      "destination": "/api/mcp.js"
     }
   ],
   "env": {
@@ -21,7 +15,8 @@
   },
   "functions": {
     "api/mcp.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "runtime": "nodejs20.x"
     }
   }
 }
