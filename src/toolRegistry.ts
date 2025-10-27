@@ -191,7 +191,7 @@ export class JiraToolRegistry {
       },
       {
         name: 'update_issue',
-        description: 'Update an existing issue',
+        description: 'Update an existing issue. Use parentKey to link a story to an epic.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -219,6 +219,10 @@ export class JiraToolRegistry {
               type: 'array',
               items: { type: 'string' },
               description: 'New labels'
+            },
+            parentKey: {
+              type: 'string',
+              description: 'Epic key to link this story to (e.g., "PROJ-123"). Sets the parent field to create epic-story relationship.'
             }
           },
           required: ['issueKey'],
@@ -956,6 +960,7 @@ export class JiraToolRegistry {
             components: args.components as string[],
             fixVersions: args.fixVersions as string[],
             dueDate: args.dueDate as string,
+            parentKey: args.parentKey as string,
           });
         case 'transition_issue':
           return await this.issueService.transitionIssue({

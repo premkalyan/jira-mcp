@@ -321,6 +321,7 @@ export interface IssueUpdateRequest {
   components?: string[];
   fixVersions?: string[];
   dueDate?: string;
+  parentKey?: string;
 }
 
 export interface TransitionRequest {

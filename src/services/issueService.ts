@@ -313,6 +313,10 @@ ${params.priority ? `**Priority**: ${params.priority}` : ''}
         updateData.fields.duedate = params.dueDate;
       }
 
+      if (params.parentKey) {
+        updateData.fields.parent = { key: params.parentKey };
+      }
+
       await this.apiClient.updateIssue(params.issueKey, updateData);
 
       const updatedFields = Object.keys(updateData.fields);
