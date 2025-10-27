@@ -59,7 +59,7 @@ jspm_packages/
 .vscode-test
 
 # Build output
-dist/
+# dist/ - NOT ignored for Vercel deployment
 build/
 
 # Logs

@@ -1,0 +1,21 @@
+# Vercel should ignore these files/folders
+
+# Docker files (not needed for Vercel)
+Dockerfile
+Dockerfile.auth
+docker-compose-http.yml
+docker-start.sh
+
+# Local development files
+wrapper.js
+wrapper-auth.js
+start-server.sh
+
+# Test files
+test-*.js
+
+# Development documentation
+P360_JIRA_MCP_Essential_Tools.md
+
+# Dev dependencies (Vercel will install production deps)
+# node_modules will be installed by Vercel
