@@ -1,11 +1,27 @@
 {
   "version": 2,
-  "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "regions": ["iad1"],
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/mcp",
+      "dest": "/api/mcp.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/mcp.js"
+    }
+  ],
   "env": {
-    "PROJECT_REGISTRY_URL": "https://project-registry-henna.vercel.app"
+    "REGISTRY_URL": "https://project-registry-henna.vercel.app"
+  },
+  "functions": {
+    "api/mcp.js": {
+      "maxDuration": 60
+    }
   }
 }

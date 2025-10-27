@@ -1,0 +1,27 @@
+# Dockerfile for Auth-Enabled JIRA MCP Wrapper
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++
+
+# Copy package files from parent MCP directory
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy the built MCP server and auth wrapper
+COPY dist/ ./dist/
+COPY wrapper-auth.js ./
+
+# Expose port
+EXPOSE 8171
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8171/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+# Start the auth wrapper
+CMD ["node", "wrapper-auth.js"]
