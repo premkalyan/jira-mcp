@@ -390,26 +390,108 @@ export default async function handler(req, res) {
   "params": {
     "name": "update_issue",
     "arguments": {
-      "issueKey": "PROJ-123",
-      "fields": {
-        "summary": "Updated summary",
-        "priority": "Critical"
-      }
+      "issueKey": "SA1-123",
+      "summary": "Updated summary",
+      "priority": "Critical",
+      "description": "Updated description"
     }
   }
 }</code></pre>
 
-        <h3>Example 5: Add Worklog</h3>
+        <h3>Example 5: Link Story to Epic</h3>
         <pre><code>{
   "jsonrpc": "2.0",
   "id": 5,
   "method": "tools/call",
   "params": {
+    "name": "update_issue",
+    "arguments": {
+      "issueKey": "SA1-63",
+      "parentKey": "SA1-62"
+    }
+  }
+}</code></pre>
+
+        <p style="margin-top: 10px;"><em>✨ New! Use <code>parentKey</code> to link a Story to an Epic. This creates the epic-story relationship in Jira.</em></p>
+
+        <h3>Example 6: Create Epic and Story</h3>
+        <pre><code>// Step 1: Create Epic
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "create_issue",
+    "arguments": {
+      "projectKey": "SA1",
+      "issueType": "Epic",
+      "summary": "User Authentication System",
+      "description": "Complete authentication and authorization system",
+      "priority": "High"
+    }
+  }
+}
+
+// Step 2: Create Story linked to Epic
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "create_issue",
+    "arguments": {
+      "projectKey": "SA1",
+      "issueType": "Story",
+      "summary": "Implement JWT authentication",
+      "description": "Add JWT-based token authentication",
+      "priority": "High",
+      "parentKey": "SA1-62"
+    }
+  }
+}</code></pre>
+
+        <p style="margin-top: 10px;"><em>💡 Tip: You can link stories to epics during creation using <code>parentKey</code>, or update existing stories later!</em></p>
+
+        <h3>Example 7: Add Worklog</h3>
+        <pre><code>{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
     "name": "add_worklog",
     "arguments": {
-      "issueKey": "PROJ-123",
+      "issueKey": "SA1-123",
       "timeSpent": "2h 30m",
       "comment": "Implemented authentication logic"
+    }
+  }
+}</code></pre>
+
+        <h3>Example 8: Transition Issue</h3>
+        <pre><code>{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "method": "tools/call",
+  "params": {
+    "name": "transition_issue",
+    "arguments": {
+      "issueKey": "SA1-123",
+      "transitionName": "In Progress",
+      "comment": "Starting work on this issue"
+    }
+  }
+}</code></pre>
+
+        <h3>Example 9: Add Comment</h3>
+        <pre><code>{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "method": "tools/call",
+  "params": {
+    "name": "add_comment",
+    "arguments": {
+      "issueKey": "SA1-123",
+      "comment": "Updated the implementation based on code review feedback"
     }
   }
 }</code></pre>
