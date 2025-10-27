@@ -1,4 +1,15 @@
 {
   "installCommand": "npm install",
-  "buildCommand": "npm run build"
+  "buildCommand": "npm run build",
+  "functions": {
+    "api/mcp.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/mcp",
+      "destination": "/api/mcp.js"
+    }
+  ]
 }
