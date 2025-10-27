@@ -131,7 +131,7 @@ export default async function handler(req, res) {
 
 async function getProjectConfig(apiKey) {
   try {
-    const response = await fetch(`${REGISTRY_URL}/api/projects/${apiKey}`);
+    const response = await fetch(`${REGISTRY_URL}/api/projects?apiKey=${encodeURIComponent(apiKey)}`);
     if (!response.ok) {
       return null;
     }
