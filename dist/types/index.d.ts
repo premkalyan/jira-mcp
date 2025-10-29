@@ -268,6 +268,8 @@ export interface IssueCreateRequest {
     issueType: string;
     summary: string;
     description?: string;
+    acceptance_criteria?: string[];
+    technical_tasks?: string[];
     priority?: string;
     assignee?: string;
     labels?: string[];
@@ -280,6 +282,8 @@ export interface IssueUpdateRequest {
     issueKey: string;
     summary?: string;
     description?: string;
+    acceptance_criteria?: string[];
+    technical_tasks?: string[];
     priority?: string;
     assignee?: string;
     labels?: string[];

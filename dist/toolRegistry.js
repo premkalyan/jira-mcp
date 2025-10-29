@@ -154,7 +154,17 @@ export class JiraToolRegistry {
                         },
                         description: {
                             type: 'string',
-                            description: 'Issue description'
+                            description: 'Issue description (user story)'
+                        },
+                        acceptance_criteria: {
+                            type: 'array',
+                            items: { type: 'string' },
+                            description: 'Array of acceptance criteria (4-7 detailed, testable conditions). Formatted as bullet list in Jira with "Acceptance Criteria" heading.'
+                        },
+                        technical_tasks: {
+                            type: 'array',
+                            items: { type: 'string' },
+                            description: 'Array of technical implementation tasks (4-7 specific tasks). Formatted as bullet list in Jira with "Technical Tasks" heading.'
                         },
                         priority: {
                             type: 'string',
@@ -190,7 +200,17 @@ export class JiraToolRegistry {
                         },
                         description: {
                             type: 'string',
-                            description: 'New description'
+                            description: 'New description (user story)'
+                        },
+                        acceptance_criteria: {
+                            type: 'array',
+                            items: { type: 'string' },
+                            description: 'Array of acceptance criteria (4-7 detailed, testable conditions). Formatted as bullet list in Jira with "Acceptance Criteria" heading.'
+                        },
+                        technical_tasks: {
+                            type: 'array',
+                            items: { type: 'string' },
+                            description: 'Array of technical implementation tasks (4-7 specific tasks). Formatted as bullet list in Jira with "Technical Tasks" heading.'
                         },
                         priority: {
                             type: 'string',

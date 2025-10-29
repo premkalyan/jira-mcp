@@ -186,21 +186,109 @@ ${issue.fields.resolution ? `\n### Resolution\n- **${issue.fields.resolution.nam
         }
       };
 
-      if (params.description) {
+      // Build rich ADF description with acceptance criteria and technical tasks
+      if (params.description || params.acceptance_criteria || params.technical_tasks) {
+        const content: any[] = [];
+
+        // Add main description
+        if (params.description) {
+          content.push({
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: params.description,
+              },
+            ],
+          });
+        }
+
+        // Add acceptance criteria section
+        if (params.acceptance_criteria && params.acceptance_criteria.length > 0) {
+          // Add spacing
+          content.push({
+            type: 'paragraph',
+            content: [],
+          });
+
+          // Add heading
+          content.push({
+            type: 'heading',
+            attrs: { level: 3 },
+            content: [
+              {
+                type: 'text',
+                text: 'Acceptance Criteria',
+                marks: [{ type: 'strong' }],
+              },
+            ],
+          });
+
+          // Add bullet list
+          content.push({
+            type: 'bulletList',
+            content: params.acceptance_criteria.map(criterion => ({
+              type: 'listItem',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [
+                    {
+                      type: 'text',
+                      text: criterion,
+                    },
+                  ],
+                },
+              ],
+            })),
+          });
+        }
+
+        // Add technical tasks section
+        if (params.technical_tasks && params.technical_tasks.length > 0) {
+          // Add spacing
+          content.push({
+            type: 'paragraph',
+            content: [],
+          });
+
+          // Add heading
+          content.push({
+            type: 'heading',
+            attrs: { level: 3 },
+            content: [
+              {
+                type: 'text',
+                text: 'Technical Tasks',
+                marks: [{ type: 'strong' }],
+              },
+            ],
+          });
+
+          // Add bullet list
+          content.push({
+            type: 'bulletList',
+            content: params.technical_tasks.map(task => ({
+              type: 'listItem',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [
+                    {
+                      type: 'text',
+                      text: task,
+                    },
+                  ],
+                },
+              ],
+            })),
+          });
+        }
+
         issueData.fields.description = {
           type: 'doc',
           version: 1,
-          content: [
-            {
-              type: 'paragraph',
-              content: [
-                {
-                  type: 'text',
-                  text: params.description,
-                },
-              ],
-            },
-          ],
+          content,
         };
       }
 
@@ -271,21 +359,109 @@ ${params.priority ? `**Priority**: ${params.priority}` : ''}
         updateData.fields.summary = params.summary;
       }
 
-      if (params.description) {
+      // Build rich ADF description with acceptance criteria and technical tasks
+      if (params.description || params.acceptance_criteria || params.technical_tasks) {
+        const content: any[] = [];
+
+        // Add main description
+        if (params.description) {
+          content.push({
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: params.description,
+              },
+            ],
+          });
+        }
+
+        // Add acceptance criteria section
+        if (params.acceptance_criteria && params.acceptance_criteria.length > 0) {
+          // Add spacing
+          content.push({
+            type: 'paragraph',
+            content: [],
+          });
+
+          // Add heading
+          content.push({
+            type: 'heading',
+            attrs: { level: 3 },
+            content: [
+              {
+                type: 'text',
+                text: 'Acceptance Criteria',
+                marks: [{ type: 'strong' }],
+              },
+            ],
+          });
+
+          // Add bullet list
+          content.push({
+            type: 'bulletList',
+            content: params.acceptance_criteria.map(criterion => ({
+              type: 'listItem',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [
+                    {
+                      type: 'text',
+                      text: criterion,
+                    },
+                  ],
+                },
+              ],
+            })),
+          });
+        }
+
+        // Add technical tasks section
+        if (params.technical_tasks && params.technical_tasks.length > 0) {
+          // Add spacing
+          content.push({
+            type: 'paragraph',
+            content: [],
+          });
+
+          // Add heading
+          content.push({
+            type: 'heading',
+            attrs: { level: 3 },
+            content: [
+              {
+                type: 'text',
+                text: 'Technical Tasks',
+                marks: [{ type: 'strong' }],
+              },
+            ],
+          });
+
+          // Add bullet list
+          content.push({
+            type: 'bulletList',
+            content: params.technical_tasks.map(task => ({
+              type: 'listItem',
+              content: [
+                {
+                  type: 'paragraph',
+                  content: [
+                    {
+                      type: 'text',
+                      text: task,
+                    },
+                  ],
+                },
+              ],
+            })),
+          });
+        }
+
         updateData.fields.description = {
           type: 'doc',
           version: 1,
-          content: [
-            {
-              type: 'paragraph',
-              content: [
-                {
-                  type: 'text',
-                  text: params.description,
-                },
-              ],
-            },
-          ],
+          content,
         };
       }
 
