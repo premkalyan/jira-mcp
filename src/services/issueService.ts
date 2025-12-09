@@ -1,13 +1,14 @@
 import { JiraApiClient } from '../jiraApiClient.js';
-import { 
-  ToolResult, 
-  SearchParams, 
-  IssueCreateRequest, 
-  IssueUpdateRequest, 
-  TransitionRequest 
+import {
+  ToolResult,
+  SearchParams,
+  IssueCreateRequest,
+  IssueUpdateRequest,
+  TransitionRequest
 } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { formatMarkdownTable } from '../utils/formatters.js';
+import { markdownToAdf, looksLikeMarkdown } from '../utils/markdownToAdf.js';
 
 export class IssueService {
   private logger: Logger;
@@ -186,8 +187,48 @@ ${issue.fields.resolution ? `\n### Resolution\n- **${issue.fields.resolution.nam
         }
       };
 
-      // Build rich ADF description with acceptance criteria and technical tasks
-      if (params.description || params.acceptance_criteria || params.technical_tasks) {
+      // Check if description contains markdown and convert to ADF
+      if (params.description && looksLikeMarkdown(params.description)) {
+        this.logger.debug('Detected markdown in description, converting to ADF');
+        const adfDoc = markdownToAdf(params.description);
+
+        // If we also have acceptance_criteria or technical_tasks, append them
+        if (params.acceptance_criteria && params.acceptance_criteria.length > 0) {
+          adfDoc.content.push({ type: 'paragraph', content: [] });
+          adfDoc.content.push({
+            type: 'heading',
+            attrs: { level: 3 },
+            content: [{ type: 'text', text: 'Acceptance Criteria', marks: [{ type: 'strong' }] }]
+          });
+          adfDoc.content.push({
+            type: 'bulletList',
+            content: params.acceptance_criteria.map(criterion => ({
+              type: 'listItem',
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: criterion }] }]
+            }))
+          });
+        }
+
+        if (params.technical_tasks && params.technical_tasks.length > 0) {
+          adfDoc.content.push({ type: 'paragraph', content: [] });
+          adfDoc.content.push({
+            type: 'heading',
+            attrs: { level: 3 },
+            content: [{ type: 'text', text: 'Technical Tasks', marks: [{ type: 'strong' }] }]
+          });
+          adfDoc.content.push({
+            type: 'bulletList',
+            content: params.technical_tasks.map(task => ({
+              type: 'listItem',
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: task }] }]
+            }))
+          });
+        }
+
+        issueData.fields.description = adfDoc;
+      }
+      // Build rich ADF description with acceptance criteria and technical tasks (legacy mode)
+      else if (params.description || params.acceptance_criteria || params.technical_tasks) {
         const content: any[] = [];
 
         // Add main description
@@ -359,8 +400,48 @@ ${params.priority ? `**Priority**: ${params.priority}` : ''}
         updateData.fields.summary = params.summary;
       }
 
-      // Build rich ADF description with acceptance criteria and technical tasks
-      if (params.description || params.acceptance_criteria || params.technical_tasks) {
+      // Check if description contains markdown and convert to ADF
+      if (params.description && looksLikeMarkdown(params.description)) {
+        this.logger.debug('Detected markdown in description, converting to ADF');
+        const adfDoc = markdownToAdf(params.description);
+
+        // If we also have acceptance_criteria or technical_tasks, append them
+        if (params.acceptance_criteria && params.acceptance_criteria.length > 0) {
+          adfDoc.content.push({ type: 'paragraph', content: [] });
+          adfDoc.content.push({
+            type: 'heading',
+            attrs: { level: 3 },
+            content: [{ type: 'text', text: 'Acceptance Criteria', marks: [{ type: 'strong' }] }]
+          });
+          adfDoc.content.push({
+            type: 'bulletList',
+            content: params.acceptance_criteria.map(criterion => ({
+              type: 'listItem',
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: criterion }] }]
+            }))
+          });
+        }
+
+        if (params.technical_tasks && params.technical_tasks.length > 0) {
+          adfDoc.content.push({ type: 'paragraph', content: [] });
+          adfDoc.content.push({
+            type: 'heading',
+            attrs: { level: 3 },
+            content: [{ type: 'text', text: 'Technical Tasks', marks: [{ type: 'strong' }] }]
+          });
+          adfDoc.content.push({
+            type: 'bulletList',
+            content: params.technical_tasks.map(task => ({
+              type: 'listItem',
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: task }] }]
+            }))
+          });
+        }
+
+        updateData.fields.description = adfDoc;
+      }
+      // Build rich ADF description with acceptance criteria and technical tasks (legacy mode)
+      else if (params.description || params.acceptance_criteria || params.technical_tasks) {
         const content: any[] = [];
 
         // Add main description
