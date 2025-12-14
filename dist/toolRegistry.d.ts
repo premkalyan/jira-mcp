@@ -14,5 +14,9 @@ export declare class JiraToolRegistry {
     private bulkOperationsService;
     constructor(apiClient: JiraApiClient);
     getToolDefinitions(): ToolDefinition[];
+    /**
+     * Helper method to resolve board ID from args or configured board name
+     */
+    private resolveBoardId;
     executeTool(toolName: string, args: Record<string, any>): Promise<ToolResult>;
 }

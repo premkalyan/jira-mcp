@@ -8,12 +8,18 @@ interface JiraCustomFields {
   epic?: string;
 }
 
+interface JiraBoardConfig {
+  boardName: string;
+  boardId?: number;  // Cached after first resolution
+}
+
 export class JiraApiClient {
   private config: JiraConfig;
   private logger: Logger;
   private rateLimiter: RateLimiter;
   private authHeader: string;
   private customFields: JiraCustomFields;
+  private boardConfig: JiraBoardConfig;
 
   constructor() {
     this.config = this.getJiraConfig();
@@ -25,7 +31,11 @@ export class JiraApiClient {
       sprint: process.env.JIRA_SPRINT_FIELD || 'customfield_10020',
       epic: process.env.JIRA_EPIC_FIELD || 'customfield_10014'
     };
+    this.boardConfig = {
+      boardName: process.env.JIRA_BOARD_NAME || ''
+    };
     this.logger.info(`Using custom field configuration: storyPoints=${this.customFields.storyPoints}`);
+    this.logger.info(`Using board: ${this.boardConfig.boardName}`);
   }
 
   private getJiraConfig(): JiraConfig {
@@ -141,17 +151,74 @@ export class JiraApiClient {
   }
 
   // Board-related methods
-  async getBoards(params: { type?: string; projectKeyOrId?: string } = {}): Promise<ApiResponse<any>> {
+  async getBoards(params: { type?: string; projectKeyOrId?: string; name?: string } = {}): Promise<ApiResponse<any>> {
     const queryParams = new URLSearchParams();
     if (params.type) queryParams.append('type', params.type);
     if (params.projectKeyOrId) queryParams.append('projectKeyOrId', params.projectKeyOrId);
-    
+    if (params.name) queryParams.append('name', params.name);
+
     const endpoint = `/board${queryParams.toString() ? `?${queryParams}` : ''}`;
     return this.makeRequest(endpoint, { useAgileApi: true });
   }
 
   async getBoard(boardId: string): Promise<any> {
     return this.makeRequest(`/board/${boardId}`, { useAgileApi: true });
+  }
+
+  /**
+   * Get board by name - searches for boards matching the name
+   * @param boardName - The name of the board to find
+   * @param projectKey - Optional project key to filter boards
+   * @returns The board object if found
+   */
+  async getBoardByName(boardName: string, projectKey?: string): Promise<any> {
+    this.logger.debug(`Looking up board by name: "${boardName}"`);
+
+    const params: { name?: string; projectKeyOrId?: string } = { name: boardName };
+    if (projectKey) params.projectKeyOrId = projectKey;
+
+    const response = await this.getBoards(params);
+    const boards = response.values || [];
+
+    if (boards.length === 0) {
+      throw new JiraError(
+        `No board found with name containing "${boardName}"`,
+        404,
+        `Please check that the board name "${boardName}" is correct in your Project Registry configuration`
+      );
+    }
+
+    // Prefer exact match, otherwise return first contains match
+    const exactMatch = boards.find((b: any) => b.name === boardName);
+    const selectedBoard = exactMatch || boards[0];
+
+    this.logger.info(`Resolved board "${boardName}" to ID: ${selectedBoard.id} (${selectedBoard.name})`);
+    return selectedBoard;
+  }
+
+  /**
+   * Resolve the configured board name to a board ID
+   * This is used by board-related operations to get the board ID
+   * @returns The board ID for the configured board name
+   */
+  async resolveBoardId(): Promise<string> {
+    if (!this.boardConfig.boardName) {
+      throw new JiraError(
+        'Board name not configured',
+        400,
+        'Please add boardName to your JIRA config in Project Registry'
+      );
+    }
+
+    const board = await this.getBoardByName(this.boardConfig.boardName);
+    return board.id.toString();
+  }
+
+  /**
+   * Get the configured board name
+   */
+  getBoardName(): string {
+    return this.boardConfig.boardName;
   }
 
   async getBoardIssues(boardId: string, params: {

@@ -63,27 +63,26 @@ export class JiraToolRegistry {
       },
       {
         name: 'get_board_details',
-        description: 'Get detailed information about a specific board',
+        description: 'Get detailed information about the configured board. Uses boardName from Project Registry config.',
         inputSchema: {
           type: 'object',
           properties: {
             boardId: {
               type: 'string',
-              description: 'Board ID to get details for'
+              description: 'Board ID (optional - uses configured boardName if not provided)'
             }
           },
-          required: ['boardId'],
         },
       },
       {
         name: 'get_board_issues',
-        description: 'Get issues from a specific board with advanced filtering',
+        description: 'Get issues from the configured board with advanced filtering. Uses boardName from Project Registry config.',
         inputSchema: {
           type: 'object',
           properties: {
             boardId: {
               type: 'string',
-              description: 'Board ID to get issues from'
+              description: 'Board ID (optional - uses configured boardName if not provided)'
             },
             assigneeFilter: {
               type: 'string',
@@ -102,7 +101,6 @@ export class JiraToolRegistry {
               maximum: 100
             }
           },
-          required: ['boardId'],
         },
       },
 
@@ -406,13 +404,13 @@ export class JiraToolRegistry {
       // Sprint tools (Priority 1)
       {
         name: 'create_sprint',
-        description: 'Create a new sprint with dates and goal',
+        description: 'Create a new sprint on the configured board. Uses boardName from Project Registry config.',
         inputSchema: {
           type: 'object',
           properties: {
             boardId: {
               type: 'string',
-              description: 'Board ID where the sprint will be created'
+              description: 'Board ID (optional - uses configured boardName if not provided)'
             },
             sprintName: {
               type: 'string',
@@ -431,7 +429,7 @@ export class JiraToolRegistry {
               description: 'Sprint goal (optional)'
             }
           },
-          required: ['boardId', 'sprintName'],
+          required: ['sprintName'],
         },
       },
       {
@@ -485,13 +483,13 @@ export class JiraToolRegistry {
       },
       {
         name: 'get_board_sprints',
-        description: 'Get all sprints for a board with optional state filtering',
+        description: 'Get all sprints for the configured board. Uses boardName from Project Registry config.',
         inputSchema: {
           type: 'object',
           properties: {
             boardId: {
               type: 'string',
-              description: 'Board ID to get sprints from'
+              description: 'Board ID (optional - uses configured boardName if not provided)'
             },
             state: {
               type: 'string',
@@ -499,7 +497,6 @@ export class JiraToolRegistry {
               enum: ['future', 'active', 'closed', 'all']
             }
           },
-          required: ['boardId'],
         },
       },
       {
@@ -606,16 +603,15 @@ export class JiraToolRegistry {
       },
       {
         name: 'get_active_sprint',
-        description: 'Get the currently active sprint for a board',
+        description: 'Get the currently active sprint for the configured board. Uses boardName from Project Registry config.',
         inputSchema: {
           type: 'object',
           properties: {
             boardId: {
               type: 'string',
-              description: 'Board ID to get active sprint from'
+              description: 'Board ID (optional - uses configured boardName if not provided)'
             }
           },
-          required: ['boardId'],
         },
       },
       {
@@ -922,6 +918,27 @@ export class JiraToolRegistry {
     ];
   }
 
+  /**
+   * Helper method to resolve board ID from args or configured board name
+   */
+  private async resolveBoardId(args: Record<string, any>): Promise<string> {
+    // If boardId is explicitly provided, use it
+    if (args.boardId) {
+      return args.boardId as string;
+    }
+
+    // Otherwise, resolve from configured board name
+    const boardName = this.apiClient.getBoardName();
+    if (!boardName) {
+      throw new Error('Board name not configured. Please add boardName to your JIRA config in Project Registry.');
+    }
+
+    this.logger.debug(`Resolving board name "${boardName}" to board ID`);
+    const boardId = await this.apiClient.resolveBoardId();
+    this.logger.info(`Resolved board "${boardName}" to ID: ${boardId}`);
+    return boardId;
+  }
+
   async executeTool(toolName: string, args: Record<string, any>): Promise<ToolResult> {
     this.logger.debug(`Executing tool: ${toolName}`, args);
 
@@ -930,15 +947,19 @@ export class JiraToolRegistry {
         // Board tools
         case 'get_boards':
           return await this.boardService.getBoards(args);
-        case 'get_board_details':
-          return await this.boardService.getBoardDetails(args.boardId as string);
-        case 'get_board_issues':
+        case 'get_board_details': {
+          const boardId = await this.resolveBoardId(args);
+          return await this.boardService.getBoardDetails(boardId);
+        }
+        case 'get_board_issues': {
+          const boardId = await this.resolveBoardId(args);
           return await this.boardService.getBoardIssues({
-            boardId: args.boardId as string,
+            boardId: boardId,
             assigneeFilter: args.assigneeFilter as 'currentUser' | 'unassigned' | 'all',
             statusFilter: args.statusFilter as 'new' | 'indeterminate' | 'done' | 'all',
             maxResults: args.maxResults as number,
           });
+        }
 
         // Issue tools
         case 'search_issues':
@@ -1028,14 +1049,16 @@ export class JiraToolRegistry {
           return await this.serverService.getServerInfo();
 
         // Sprint tools (Priority 1)
-        case 'create_sprint':
+        case 'create_sprint': {
+          const boardId = await this.resolveBoardId(args);
           return await this.sprintService.createSprint({
-            boardId: args.boardId as string,
+            boardId: boardId,
             sprintName: args.sprintName as string,
             startDate: args.startDate as string,
             endDate: args.endDate as string,
             goal: args.goal as string,
           });
+        }
         case 'update_sprint':
           return await this.sprintService.updateSprint({
             sprintId: args.sprintId as string,
@@ -1047,8 +1070,10 @@ export class JiraToolRegistry {
           });
         case 'get_sprint_details':
           return await this.sprintService.getSprintDetails(args.sprintId as string);
-        case 'get_board_sprints':
-          return await this.sprintService.getBoardSprints(args.boardId as string, args.state as string);
+        case 'get_board_sprints': {
+          const boardId = await this.resolveBoardId(args);
+          return await this.sprintService.getBoardSprints(boardId, args.state as string);
+        }
         case 'add_issues_to_sprint':
           return await this.sprintService.addIssuesToSprint({
             sprintId: args.sprintId as string,
@@ -1076,8 +1101,10 @@ export class JiraToolRegistry {
             args.sprintId as string,
             args.incompleteIssuesAction as string
           );
-        case 'get_active_sprint':
-          return await this.sprintService.getActiveSprint(args.boardId as string);
+        case 'get_active_sprint': {
+          const boardId = await this.resolveBoardId(args);
+          return await this.sprintService.getActiveSprint(boardId);
+        }
         case 'get_sprint_capacity':
           return await this.sprintService.getSprintCapacity(args.sprintId as string);
         case 'set_sprint_goal':

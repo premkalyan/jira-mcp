@@ -646,11 +646,13 @@ export default async function handler(req, res) {
     const hasUrl = jiraConfig.url || jiraConfig.host || jiraConfig.baseUrl;
     const hasEmail = jiraConfig.email;
     const hasToken = jiraConfig.token || jiraConfig.apiToken;
+    const hasBoardName = jiraConfig.boardName;
 
     const missingFields = [];
     if (!hasUrl) missingFields.push('url/baseUrl');
     if (!hasEmail) missingFields.push('email');
     if (!hasToken) missingFields.push('token/apiToken');
+    if (!hasBoardName) missingFields.push('boardName');
 
     if (missingFields.length > 0) {
       return res.status(400).json({
@@ -658,7 +660,10 @@ export default async function handler(req, res) {
         id: mcpRequest.id || null,
         error: {
           code: -32600,
-          message: `Bad Request: JIRA configuration missing required fields: ${missingFields.join(', ')}`
+          message: `Bad Request: JIRA configuration missing required fields: ${missingFields.join(', ')}. ` +
+            (missingFields.includes('boardName')
+              ? 'Please add boardName to your JIRA config in Project Registry at https://project-registry-henna.vercel.app/api/projects/register'
+              : '')
         }
       });
     }
@@ -672,10 +677,13 @@ export default async function handler(req, res) {
       email: jiraConfig.email,
       token: jiraConfig.token || jiraConfig.apiToken,
       projectKey: jiraConfig.projectKey || '',
+      boardName: jiraConfig.boardName,
       storyPointsField: jiraConfig.storyPointsField || 'customfield_10016',
       sprintField: jiraConfig.sprintField || 'customfield_10020',
       epicField: jiraConfig.epicField || 'customfield_10014'
     };
+
+    console.log(`📋 Using board: ${normalizedConfig.boardName}`);
 
     // Execute MCP request with project-specific credentials
     const result = await executeMCPRequest(mcpRequest, normalizedConfig);
@@ -738,6 +746,7 @@ async function executeMCPRequest(mcpRequest, jiraConfig) {
         JIRA_EMAIL: jiraConfig.email,
         JIRA_API_TOKEN: jiraConfig.token,
         JIRA_PROJECT_KEY: jiraConfig.projectKey || '',
+        JIRA_BOARD_NAME: jiraConfig.boardName || '',
         JIRA_STORY_POINTS_FIELD: jiraConfig.storyPointsField || 'customfield_10016',
         JIRA_SPRINT_FIELD: jiraConfig.sprintField || 'customfield_10020',
         JIRA_EPIC_FIELD: jiraConfig.epicField || 'customfield_10014',

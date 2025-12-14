@@ -5,6 +5,7 @@ export declare class JiraApiClient {
     private rateLimiter;
     private authHeader;
     private customFields;
+    private boardConfig;
     constructor();
     private getJiraConfig;
     testConnection(): Promise<void>;
@@ -18,8 +19,26 @@ export declare class JiraApiClient {
     getBoards(params?: {
         type?: string;
         projectKeyOrId?: string;
+        name?: string;
     }): Promise<ApiResponse<any>>;
     getBoard(boardId: string): Promise<any>;
+    /**
+     * Get board by name - searches for boards matching the name
+     * @param boardName - The name of the board to find
+     * @param projectKey - Optional project key to filter boards
+     * @returns The board object if found
+     */
+    getBoardByName(boardName: string, projectKey?: string): Promise<any>;
+    /**
+     * Resolve the configured board name to a board ID
+     * This is used by board-related operations to get the board ID
+     * @returns The board ID for the configured board name
+     */
+    resolveBoardId(): Promise<string>;
+    /**
+     * Get the configured board name
+     */
+    getBoardName(): string;
     getBoardIssues(boardId: string, params?: {
         jql?: string;
         maxResults?: number;
