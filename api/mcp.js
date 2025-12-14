@@ -1,5 +1,6 @@
 // Vercel Serverless Function for JIRA MCP
 // Accepts JSON-RPC 2.0 format with Authorization: Bearer {apiKey}
+// Supports MCP protocol (Streamable HTTP transport)
 
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -10,6 +11,56 @@ const __dirname = path.dirname(__filename);
 
 const REGISTRY_URL = process.env.REGISTRY_URL || 'https://project-registry-henna.vercel.app';
 const REGISTRY_AUTH_TOKEN = process.env.REGISTRY_AUTH_TOKEN;
+
+// MCP Server Info
+const SERVER_INFO = {
+  name: 'jira-mcp',
+  version: '1.0.4'
+};
+
+// MCP Protocol Version
+const PROTOCOL_VERSION = '2024-11-05';
+
+// Tool definitions for tools/list
+const TOOLS = [
+  { name: 'get_boards', description: 'List all available Jira boards with optional filtering', inputSchema: { type: 'object', properties: { type: { type: 'string' }, projectKey: { type: 'string' } } } },
+  { name: 'get_board_details', description: 'Get detailed information about a board', inputSchema: { type: 'object', properties: { boardId: { type: 'string' } } } },
+  { name: 'get_board_issues', description: 'Get issues from a board with filtering', inputSchema: { type: 'object', properties: { boardId: { type: 'string' }, maxResults: { type: 'number' } } } },
+  { name: 'get_board_sprints', description: 'Get all sprints for a board', inputSchema: { type: 'object', properties: { boardId: { type: 'string' } } } },
+  { name: 'search_issues', description: 'Search for issues using JQL', inputSchema: { type: 'object', properties: { jql: { type: 'string' }, maxResults: { type: 'number' } }, required: ['jql'] } },
+  { name: 'get_issue_details', description: 'Get comprehensive details about an issue', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' } }, required: ['issueKey'] } },
+  { name: 'create_issue', description: 'Create a new Jira issue (Epic, Story, Task, Bug)', inputSchema: { type: 'object', properties: { projectKey: { type: 'string' }, issueType: { type: 'string' }, summary: { type: 'string' }, description: { type: 'string' } }, required: ['issueType', 'summary'] } },
+  { name: 'update_issue', description: 'Update an existing issue', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' } }, required: ['issueKey'] } },
+  { name: 'transition_issue', description: 'Move issue between workflow statuses', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' }, transitionName: { type: 'string' } }, required: ['issueKey', 'transitionName'] } },
+  { name: 'add_comment', description: 'Add a comment to an issue', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' }, comment: { type: 'string' } }, required: ['issueKey', 'comment'] } },
+  { name: 'add_worklog', description: 'Log work time on an issue', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' }, timeSpent: { type: 'string' } }, required: ['issueKey', 'timeSpent'] } },
+  { name: 'get_worklogs', description: 'Get work logs for an issue', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' } }, required: ['issueKey'] } },
+  { name: 'get_current_user', description: 'Get authenticated user information', inputSchema: { type: 'object', properties: {} } },
+  { name: 'search_users', description: 'Find users by name or email', inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } },
+  { name: 'get_user_details', description: 'Get detailed user information', inputSchema: { type: 'object', properties: { accountId: { type: 'string' } }, required: ['accountId'] } },
+  { name: 'get_projects', description: 'List all accessible Jira projects', inputSchema: { type: 'object', properties: {} } },
+  { name: 'get_project_details', description: 'Get comprehensive project information', inputSchema: { type: 'object', properties: { projectKey: { type: 'string' } }, required: ['projectKey'] } },
+  { name: 'get_server_info', description: 'Get Jira server status and information', inputSchema: { type: 'object', properties: {} } },
+  { name: 'create_sprint', description: 'Create a new sprint', inputSchema: { type: 'object', properties: { boardId: { type: 'string' }, name: { type: 'string' } }, required: ['name'] } },
+  { name: 'get_active_sprint', description: 'Get the currently active sprint', inputSchema: { type: 'object', properties: { boardId: { type: 'string' } } } },
+  { name: 'get_sprint_details', description: 'Get details about a specific sprint', inputSchema: { type: 'object', properties: { sprintId: { type: 'string' } }, required: ['sprintId'] } },
+  { name: 'start_sprint', description: 'Start a sprint', inputSchema: { type: 'object', properties: { sprintId: { type: 'string' } }, required: ['sprintId'] } },
+  { name: 'complete_sprint', description: 'Complete a sprint', inputSchema: { type: 'object', properties: { sprintId: { type: 'string' } }, required: ['sprintId'] } },
+  { name: 'add_issues_to_sprint', description: 'Add issues to a sprint', inputSchema: { type: 'object', properties: { sprintId: { type: 'string' }, issueKeys: { type: 'array' } }, required: ['sprintId', 'issueKeys'] } },
+  { name: 'remove_issues_from_sprint', description: 'Remove issues from a sprint', inputSchema: { type: 'object', properties: { issueKeys: { type: 'array' } }, required: ['issueKeys'] } },
+  { name: 'link_issues', description: 'Create a link between two issues', inputSchema: { type: 'object', properties: { sourceKey: { type: 'string' }, targetKey: { type: 'string' }, linkType: { type: 'string' } }, required: ['sourceKey', 'targetKey', 'linkType'] } },
+  { name: 'get_issue_links', description: 'Get all links for an issue', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' } }, required: ['issueKey'] } },
+  { name: 'get_link_types', description: 'Get available link types', inputSchema: { type: 'object', properties: {} } },
+  { name: 'create_subtask', description: 'Create a subtask under an issue', inputSchema: { type: 'object', properties: { parentKey: { type: 'string' }, summary: { type: 'string' } }, required: ['parentKey', 'summary'] } },
+  { name: 'get_subtasks', description: 'Get subtasks of an issue', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' } }, required: ['issueKey'] } },
+  { name: 'get_story_points', description: 'Get story points for an issue', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' } }, required: ['issueKey'] } },
+  { name: 'set_story_points', description: 'Set story points for an issue', inputSchema: { type: 'object', properties: { issueKey: { type: 'string' }, points: { type: 'number' } }, required: ['issueKey', 'points'] } },
+  { name: 'bulk_create_issues', description: 'Create multiple issues at once', inputSchema: { type: 'object', properties: { issues: { type: 'array' } }, required: ['issues'] } },
+  { name: 'bulk_update_issues', description: 'Update multiple issues at once', inputSchema: { type: 'object', properties: { updates: { type: 'array' } }, required: ['updates'] } },
+  { name: 'bulk_transition_issues', description: 'Transition multiple issues', inputSchema: { type: 'object', properties: { issueKeys: { type: 'array' }, transitionName: { type: 'string' } }, required: ['issueKeys', 'transitionName'] } },
+  { name: 'bulk_assign_issues', description: 'Assign multiple issues to a user', inputSchema: { type: 'object', properties: { issueKeys: { type: 'array' }, assigneeId: { type: 'string' } }, required: ['issueKeys'] } },
+  { name: 'bulk_update_story_points', description: 'Update story points for multiple issues', inputSchema: { type: 'object', properties: { updates: { type: 'array' } }, required: ['updates'] } }
+];
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -589,12 +640,64 @@ export default async function handler(req, res) {
   }
 
   try {
+    const body = req.body;
+
+    // ============================================================
+    // MCP PROTOCOL HANDLERS (Streamable HTTP Transport)
+    // No auth required for discovery - auth only for tools/call
+    // ============================================================
+
+    // 1. INITIALIZE - MCP handshake
+    if (body?.method === 'initialize') {
+      console.log('MCP: Initialize request received');
+      return res.status(200).json({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          protocolVersion: PROTOCOL_VERSION,
+          capabilities: {
+            tools: {}
+          },
+          serverInfo: SERVER_INFO
+        }
+      });
+    }
+
+    // 2. INITIALIZED - Client acknowledgment
+    if (body?.method === 'notifications/initialized') {
+      console.log('MCP: Client initialized');
+      return res.status(204).end();
+    }
+
+    // 3. TOOLS/LIST - Return available tools (no auth required)
+    if (body?.method === 'tools/list') {
+      console.log('MCP: Tools list request');
+      return res.status(200).json({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: { tools: TOOLS }
+      });
+    }
+
+    // 4. PING - Health check (no auth required)
+    if (body?.method === 'ping') {
+      return res.status(200).json({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {}
+      });
+    }
+
+    // ============================================================
+    // AUTHENTICATED ENDPOINTS (tools/call)
+    // ============================================================
+
     // Extract API key from Authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         jsonrpc: '2.0',
-        id: req.body?.id || null,
+        id: body?.id || null,
         error: {
           code: -32600,
           message: 'Unauthorized: Missing or invalid Authorization header. Expected: Authorization: Bearer {projectApiKey}'
@@ -605,7 +708,7 @@ export default async function handler(req, res) {
     const apiKey = authHeader.replace('Bearer ', '').trim();
 
     // Validate JSON-RPC request
-    const mcpRequest = req.body;
+    const mcpRequest = body;
     if (!mcpRequest.jsonrpc || mcpRequest.jsonrpc !== '2.0') {
       return res.status(400).json({
         jsonrpc: '2.0',
