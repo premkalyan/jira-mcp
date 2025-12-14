@@ -455,9 +455,18 @@ export class JiraApiClient {
 
   // Worklog methods
   async addWorklog(issueIdOrKey: string, timeSpent: string, comment?: string, startedDate?: string): Promise<any> {
+    // Format date to JIRA's required format: 2021-01-17T12:34:00.000+0000
+    let started: string;
+    if (startedDate) {
+      const date = new Date(startedDate);
+      started = date.toISOString().replace('Z', '+0000');
+    } else {
+      started = new Date().toISOString().replace('Z', '+0000');
+    }
+
     const body: any = {
       timeSpent,
-      started: startedDate || new Date().toISOString(),
+      started,
     };
 
     if (comment) {
@@ -470,6 +479,8 @@ export class JiraApiClient {
         }]
       };
     }
+
+    this.logger.debug(`Adding worklog to ${issueIdOrKey}:`, { timeSpent, started, hasComment: !!comment });
 
     return this.makeRequest(`/issue/${issueIdOrKey}/worklog`, {
       method: 'POST',
@@ -498,7 +509,9 @@ export class JiraApiClient {
     }
 
     if (data.started) {
-      body.started = data.started;
+      // Format date to JIRA's required format: 2021-01-17T12:34:00.000+0000
+      const date = new Date(data.started);
+      body.started = date.toISOString().replace('Z', '+0000');
     }
 
     if (data.comment) {
@@ -511,6 +524,8 @@ export class JiraApiClient {
         }]
       };
     }
+
+    this.logger.debug(`Updating worklog ${worklogId} on ${issueIdOrKey}:`, body);
 
     return this.makeRequest(`/issue/${issueIdOrKey}/worklog/${worklogId}`, {
       method: 'PUT',
