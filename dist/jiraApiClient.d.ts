@@ -32,7 +32,8 @@ export declare class JiraApiClient {
     /**
      * Resolve the configured board name to a board ID
      * This is used by board-related operations to get the board ID
-     * @returns The board ID for the configured board name
+     * If boardName is not configured, fetches the default board for the project
+     * @returns The board ID for the configured board or the default project board
      */
     resolveBoardId(): Promise<string>;
     /**

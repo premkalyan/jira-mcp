@@ -16,6 +16,7 @@ export declare class JiraToolRegistry {
     getToolDefinitions(): ToolDefinition[];
     /**
      * Helper method to resolve board ID from args or configured board name
+     * If no boardName is configured, fetches the default board for the project
      */
     private resolveBoardId;
     executeTool(toolName: string, args: Record<string, any>): Promise<ToolResult>;

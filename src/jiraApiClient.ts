@@ -199,19 +199,42 @@ export class JiraApiClient {
   /**
    * Resolve the configured board name to a board ID
    * This is used by board-related operations to get the board ID
-   * @returns The board ID for the configured board name
+   * If boardName is not configured, fetches the default board for the project
+   * @returns The board ID for the configured board or the default project board
    */
   async resolveBoardId(): Promise<string> {
-    if (!this.boardConfig.boardName) {
+    // If boardName is configured, use it
+    if (this.boardConfig.boardName) {
+      const board = await this.getBoardByName(this.boardConfig.boardName);
+      return board.id.toString();
+    }
+
+    // Otherwise, get the default board for the project (team-managed projects have only one)
+    const projectKey = process.env.JIRA_PROJECT_KEY;
+    this.logger.debug(`No boardName configured, fetching default board for project: ${projectKey || 'all'}`);
+
+    const params: { projectKeyOrId?: string } = {};
+    if (projectKey) {
+      params.projectKeyOrId = projectKey;
+    }
+
+    const response = await this.getBoards(params);
+    const boards = response.values || [];
+
+    if (boards.length === 0) {
       throw new JiraError(
-        'Board name not configured',
-        400,
-        'Please add boardName to your JIRA config in Project Registry'
+        'No boards found',
+        404,
+        projectKey
+          ? `No boards found for project ${projectKey}. Please check your project configuration.`
+          : 'No boards found. Please configure projectKey or boardName in Project Registry.'
       );
     }
 
-    const board = await this.getBoardByName(this.boardConfig.boardName);
-    return board.id.toString();
+    // Use the first (and likely only) board for team-managed projects
+    const defaultBoard = boards[0];
+    this.logger.info(`Using default board: ${defaultBoard.name} (ID: ${defaultBoard.id})`);
+    return defaultBoard.id.toString();
   }
 
   /**

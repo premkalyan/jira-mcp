@@ -920,6 +920,7 @@ export class JiraToolRegistry {
 
   /**
    * Helper method to resolve board ID from args or configured board name
+   * If no boardName is configured, fetches the default board for the project
    */
   private async resolveBoardId(args: Record<string, any>): Promise<string> {
     // If boardId is explicitly provided, use it
@@ -927,15 +928,16 @@ export class JiraToolRegistry {
       return args.boardId as string;
     }
 
-    // Otherwise, resolve from configured board name
+    // Otherwise, resolve from configured board name or get default board
     const boardName = this.apiClient.getBoardName();
-    if (!boardName) {
-      throw new Error('Board name not configured. Please add boardName to your JIRA config in Project Registry.');
+    if (boardName) {
+      this.logger.debug(`Resolving board name "${boardName}" to board ID`);
+    } else {
+      this.logger.debug('No boardName configured, will fetch default board for project');
     }
 
-    this.logger.debug(`Resolving board name "${boardName}" to board ID`);
     const boardId = await this.apiClient.resolveBoardId();
-    this.logger.info(`Resolved board "${boardName}" to ID: ${boardId}`);
+    this.logger.info(`Using board ID: ${boardId}`);
     return boardId;
   }
 
