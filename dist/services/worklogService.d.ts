@@ -7,4 +7,25 @@ export declare class WorklogService {
     addWorklog(params: WorklogRequest): Promise<ToolResult>;
     getWorklogs(issueKey: string): Promise<ToolResult>;
     private formatDuration;
+    updateWorklog(params: {
+        issueKey: string;
+        worklogId: string;
+        timeSpent?: string;
+        comment?: string;
+        startDate?: string;
+    }): Promise<ToolResult>;
+    deleteWorklog(params: {
+        issueKey: string;
+        worklogId: string;
+    }): Promise<ToolResult>;
+    getMyWorklogs(params: {
+        startDate: string;
+        endDate: string;
+        projectKey?: string;
+    }): Promise<ToolResult>;
+    getSprintWorklogs(params: {
+        sprintId?: string;
+        boardId?: string;
+        groupBy?: 'user' | 'issue' | 'day';
+    }): Promise<ToolResult>;
 }

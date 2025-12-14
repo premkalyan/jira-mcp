@@ -368,6 +368,50 @@ export class JiraApiClient {
     async getWorklogs(issueIdOrKey) {
         return this.makeRequest(`/issue/${issueIdOrKey}/worklog`, { useV3Api: true });
     }
+    async getWorklogById(issueIdOrKey, worklogId) {
+        return this.makeRequest(`/issue/${issueIdOrKey}/worklog/${worklogId}`, { useV3Api: true });
+    }
+    async updateWorklog(issueIdOrKey, worklogId, data) {
+        const body = {};
+        if (data.timeSpent) {
+            body.timeSpent = data.timeSpent;
+        }
+        if (data.started) {
+            body.started = data.started;
+        }
+        if (data.comment) {
+            body.comment = {
+                type: 'doc',
+                version: 1,
+                content: [{
+                        type: 'paragraph',
+                        content: [{ type: 'text', text: data.comment }]
+                    }]
+            };
+        }
+        return this.makeRequest(`/issue/${issueIdOrKey}/worklog/${worklogId}`, {
+            method: 'PUT',
+            body,
+            useV3Api: true,
+        });
+    }
+    async deleteWorklog(issueIdOrKey, worklogId) {
+        await this.makeRequest(`/issue/${issueIdOrKey}/worklog/${worklogId}`, {
+            method: 'DELETE',
+            useV3Api: true,
+        });
+    }
+    async getWorklogsUpdatedSince(since) {
+        // since is Unix timestamp in milliseconds
+        return this.makeRequest(`/worklog/updated?since=${since}`, { useV3Api: true });
+    }
+    async getWorklogsByIds(worklogIds) {
+        return this.makeRequest('/worklog/list', {
+            method: 'POST',
+            body: { ids: worklogIds },
+            useV3Api: true,
+        });
+    }
     // Sprint-related methods (Priority 1)
     async createSprint(boardId, sprintData) {
         const body = {

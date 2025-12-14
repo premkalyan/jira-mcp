@@ -135,4 +135,347 @@ ${w.comment ? `Comment: ${typeof w.comment === 'string' ? w.comment : 'Rich text
             return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
         }
     }
+    async updateWorklog(params) {
+        try {
+            this.logger.debug(`Updating worklog ${params.worklogId} on issue: ${params.issueKey}`, params);
+            // Build update data object, only including defined properties
+            const updateData = {};
+            if (params.timeSpent !== undefined)
+                updateData.timeSpent = params.timeSpent;
+            if (params.comment !== undefined)
+                updateData.comment = params.comment;
+            if (params.startDate !== undefined)
+                updateData.started = params.startDate;
+            const result = await this.apiClient.updateWorklog(params.issueKey, params.worklogId, updateData);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `# ✅ Work Log Updated Successfully!
+
+**Issue**: ${params.issueKey}
+**Work Log ID**: ${params.worklogId}
+${params.timeSpent ? `**New Time Spent**: ${params.timeSpent}` : ''}
+${params.comment ? `**New Comment**: ${params.comment}` : ''}
+${params.startDate ? `**New Start Date**: ${params.startDate}` : ''}
+
+## Updated Details
+- **Author**: ${result.author?.displayName || 'Unknown'}
+- **Time Spent**: ${result.timeSpent}
+- **Time in Seconds**: ${result.timeSpentSeconds}
+- **Updated**: ${new Date(result.updated).toLocaleString()}
+
+## Quick Actions
+- View all worklogs: Use \`get_worklogs\` with issueKey: ${params.issueKey}
+- Delete this worklog: Use \`delete_worklog\` with worklogId: ${params.worklogId}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to update worklog ${params.worklogId}:`, error);
+            throw new Error(`Failed to update work log: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+    async deleteWorklog(params) {
+        try {
+            this.logger.debug(`Deleting worklog ${params.worklogId} from issue: ${params.issueKey}`);
+            await this.apiClient.deleteWorklog(params.issueKey, params.worklogId);
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `# ✅ Work Log Deleted Successfully!
+
+**Issue**: ${params.issueKey}
+**Deleted Work Log ID**: ${params.worklogId}
+
+The work log entry has been permanently removed.
+
+## Quick Actions
+- View remaining worklogs: Use \`get_worklogs\` with issueKey: ${params.issueKey}
+- Add new worklog: Use \`add_worklog\` with issueKey: ${params.issueKey}`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            this.logger.error(`Failed to delete worklog ${params.worklogId}:`, error);
+            throw new Error(`Failed to delete work log: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+    async getMyWorklogs(params) {
+        try {
+            this.logger.debug(`Fetching worklogs for current user from ${params.startDate} to ${params.endDate}`);
+            // Get current user
+            const currentUser = await this.apiClient.getCurrentUser();
+            const accountId = currentUser.accountId;
+            // Build JQL to find issues with worklogs by current user in date range
+            let jql = `worklogAuthor = currentUser() AND worklogDate >= "${params.startDate}" AND worklogDate <= "${params.endDate}"`;
+            if (params.projectKey) {
+                jql += ` AND project = ${params.projectKey}`;
+            }
+            // Search for issues
+            const searchResult = await this.apiClient.searchIssues(jql, {
+                maxResults: 100,
+                startAt: 0,
+                fields: ['key', 'summary', 'worklog']
+            });
+            const issues = searchResult.issues || [];
+            if (issues.length === 0) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `# ⏱️ My Work Logs (${params.startDate} to ${params.endDate})
+
+No work logs found for this date range.
+${params.projectKey ? `Project filter: ${params.projectKey}` : ''}
+
+## Quick Actions
+- Add work log: Use \`add_worklog\`
+- Search issues: Use \`search_issues\``,
+                        },
+                    ],
+                };
+            }
+            // Collect all worklogs by current user within date range
+            const startMs = new Date(params.startDate).getTime();
+            const endMs = new Date(params.endDate).getTime() + (24 * 60 * 60 * 1000); // Include end date
+            const myWorklogs = [];
+            for (const issue of issues) {
+                const worklogsResponse = await this.apiClient.getWorklogs(issue.key);
+                const worklogs = worklogsResponse.worklogs || [];
+                for (const worklog of worklogs) {
+                    if (worklog.author.accountId === accountId) {
+                        const worklogDate = new Date(worklog.started).getTime();
+                        if (worklogDate >= startMs && worklogDate <= endMs) {
+                            myWorklogs.push({
+                                ...worklog,
+                                issueKey: issue.key,
+                                issueSummary: issue.fields.summary,
+                            });
+                        }
+                    }
+                }
+            }
+            // Sort by date
+            myWorklogs.sort((a, b) => new Date(a.started).getTime() - new Date(b.started).getTime());
+            // Calculate totals
+            const totalSeconds = myWorklogs.reduce((sum, w) => sum + w.timeSpentSeconds, 0);
+            const totalTime = this.formatDuration(totalSeconds);
+            // Group by day
+            const byDay = {};
+            for (const worklog of myWorklogs) {
+                const day = new Date(worklog.started).toLocaleDateString();
+                byDay[day] = (byDay[day] || 0) + worklog.timeSpentSeconds;
+            }
+            // Create table data
+            const tableData = myWorklogs.map((w) => [
+                w.issueKey,
+                w.issueSummary.substring(0, 40) + (w.issueSummary.length > 40 ? '...' : ''),
+                w.timeSpent,
+                new Date(w.started).toLocaleDateString(),
+                w.comment ? 'Yes' : 'No',
+            ]);
+            const markdownTable = formatMarkdownTable(['Issue', 'Summary', 'Time', 'Date', 'Comment'], tableData);
+            // Daily summary
+            const dailySummary = Object.entries(byDay)
+                .map(([day, seconds]) => `- **${day}**: ${this.formatDuration(seconds)}`)
+                .join('\n');
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `# ⏱️ My Work Logs (${params.startDate} to ${params.endDate})
+
+**User**: ${currentUser.displayName}
+**Total Time Logged**: ${totalTime}
+**Total Entries**: ${myWorklogs.length}
+**Unique Issues**: ${new Set(myWorklogs.map(w => w.issueKey)).size}
+${params.projectKey ? `**Project**: ${params.projectKey}` : ''}
+
+## Work Log Entries
+${markdownTable}
+
+## Daily Summary
+${dailySummary}
+
+## Time Breakdown
+- **Total Hours**: ${(totalSeconds / 3600).toFixed(2)}h
+- **Average per Entry**: ${this.formatDuration(Math.round(totalSeconds / myWorklogs.length))}
+
+## Quick Actions
+- Add more work: Use \`add_worklog\`
+- Update entry: Use \`update_worklog\` with worklogId`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            this.logger.error('Failed to get my worklogs:', error);
+            throw new Error(`Failed to retrieve worklogs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+    async getSprintWorklogs(params) {
+        try {
+            this.logger.debug('Fetching sprint worklogs', params);
+            // Get sprint issues
+            let sprintId = params.sprintId;
+            if (!sprintId && params.boardId) {
+                // Get active sprint for board
+                const sprints = await this.apiClient.getBoardSprints(params.boardId, 'active');
+                if (sprints.values && sprints.values.length > 0) {
+                    sprintId = sprints.values[0].id.toString();
+                }
+            }
+            if (!sprintId) {
+                // Try to get active sprint from configured board
+                const boardId = await this.apiClient.resolveBoardId();
+                const sprints = await this.apiClient.getBoardSprints(boardId, 'active');
+                if (sprints.values && sprints.values.length > 0) {
+                    sprintId = sprints.values[0].id.toString();
+                }
+            }
+            if (!sprintId) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `# ⚠️ No Active Sprint Found
+
+Could not find an active sprint. Please provide a sprintId parameter or ensure there is an active sprint on your board.
+
+## Quick Actions
+- List sprints: Use \`get_board_sprints\`
+- Get board details: Use \`get_board_details\``,
+                        },
+                    ],
+                };
+            }
+            // Get sprint details
+            const sprint = await this.apiClient.getSprint(sprintId);
+            // Get sprint issues
+            const sprintIssuesResponse = await this.apiClient.getSprintIssues(sprintId);
+            const issues = sprintIssuesResponse.issues || [];
+            if (issues.length === 0) {
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `# ⏱️ Sprint Worklogs: ${sprint.name}
+
+**Sprint**: ${sprint.name}
+**Status**: ${sprint.state}
+**No issues found in this sprint.**
+
+## Quick Actions
+- Add issues to sprint: Use \`add_issues_to_sprint\``,
+                        },
+                    ],
+                };
+            }
+            // Collect all worklogs
+            const allWorklogs = [];
+            for (const issue of issues) {
+                try {
+                    const worklogsResponse = await this.apiClient.getWorklogs(issue.key);
+                    const worklogs = worklogsResponse.worklogs || [];
+                    for (const worklog of worklogs) {
+                        allWorklogs.push({
+                            ...worklog,
+                            issueKey: issue.key,
+                            issueSummary: issue.fields.summary,
+                        });
+                    }
+                }
+                catch (e) {
+                    // Skip issues where we can't get worklogs
+                    this.logger.debug(`Could not get worklogs for ${issue.key}`);
+                }
+            }
+            const totalSeconds = allWorklogs.reduce((sum, w) => sum + w.timeSpentSeconds, 0);
+            const totalTime = this.formatDuration(totalSeconds);
+            // Group data based on groupBy parameter
+            let groupedContent = '';
+            const groupBy = params.groupBy || 'user';
+            if (groupBy === 'user') {
+                const byUser = {};
+                for (const worklog of allWorklogs) {
+                    const name = worklog.author.displayName;
+                    if (!byUser[name])
+                        byUser[name] = { seconds: 0, entries: 0 };
+                    byUser[name].seconds += worklog.timeSpentSeconds;
+                    byUser[name].entries += 1;
+                }
+                groupedContent = Object.entries(byUser)
+                    .sort((a, b) => b[1].seconds - a[1].seconds)
+                    .map(([name, data]) => `| ${name} | ${this.formatDuration(data.seconds)} | ${data.entries} |`)
+                    .join('\n');
+                groupedContent = `| User | Time Logged | Entries |\n|------|-------------|---------|
+${groupedContent}`;
+            }
+            else if (groupBy === 'issue') {
+                const byIssue = {};
+                for (const worklog of allWorklogs) {
+                    if (!byIssue[worklog.issueKey])
+                        byIssue[worklog.issueKey] = { seconds: 0, summary: worklog.issueSummary };
+                    byIssue[worklog.issueKey].seconds += worklog.timeSpentSeconds;
+                }
+                groupedContent = Object.entries(byIssue)
+                    .sort((a, b) => b[1].seconds - a[1].seconds)
+                    .map(([key, data]) => `| ${key} | ${data.summary.substring(0, 30)}... | ${this.formatDuration(data.seconds)} |`)
+                    .join('\n');
+                groupedContent = `| Issue | Summary | Time Logged |\n|-------|---------|-------------|
+${groupedContent}`;
+            }
+            else if (groupBy === 'day') {
+                const byDay = {};
+                for (const worklog of allWorklogs) {
+                    const day = new Date(worklog.started).toLocaleDateString();
+                    byDay[day] = (byDay[day] || 0) + worklog.timeSpentSeconds;
+                }
+                groupedContent = Object.entries(byDay)
+                    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+                    .map(([day, seconds]) => `| ${day} | ${this.formatDuration(seconds)} |`)
+                    .join('\n');
+                groupedContent = `| Date | Time Logged |\n|------|-------------|
+${groupedContent}`;
+            }
+            const uniqueUsers = [...new Set(allWorklogs.map(w => w.author.displayName))];
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: `# ⏱️ Sprint Worklogs: ${sprint.name}
+
+**Sprint**: ${sprint.name}
+**Status**: ${sprint.state}
+**Start Date**: ${sprint.startDate ? new Date(sprint.startDate).toLocaleDateString() : 'Not set'}
+**End Date**: ${sprint.endDate ? new Date(sprint.endDate).toLocaleDateString() : 'Not set'}
+
+## Summary
+- **Total Time Logged**: ${totalTime}
+- **Total Entries**: ${allWorklogs.length}
+- **Issues with Worklogs**: ${new Set(allWorklogs.map(w => w.issueKey)).size} / ${issues.length}
+- **Contributors**: ${uniqueUsers.length}
+
+## Breakdown by ${groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}
+${groupedContent}
+
+## Team Members
+${uniqueUsers.join(', ')}
+
+## Quick Actions
+- Add worklog: Use \`add_worklog\`
+- Get issue worklogs: Use \`get_worklogs\` with issueKey`,
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            this.logger.error('Failed to get sprint worklogs:', error);
+            throw new Error(`Failed to retrieve sprint worklogs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
 }

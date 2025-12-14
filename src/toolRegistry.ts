@@ -390,6 +390,98 @@ export class JiraToolRegistry {
           required: ['issueKey'],
         },
       },
+      {
+        name: 'update_worklog',
+        description: 'Update an existing work log entry (change time, comment, or date)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            issueKey: {
+              type: 'string',
+              description: 'Issue key (e.g., PROJ-123)'
+            },
+            worklogId: {
+              type: 'string',
+              description: 'ID of the worklog to update (from get_worklogs)'
+            },
+            timeSpent: {
+              type: 'string',
+              description: 'New time spent (e.g., "2h 30m", "1d")'
+            },
+            comment: {
+              type: 'string',
+              description: 'New work description/comment'
+            },
+            startDate: {
+              type: 'string',
+              description: 'New start date (ISO format)'
+            }
+          },
+          required: ['issueKey', 'worklogId'],
+        },
+      },
+      {
+        name: 'delete_worklog',
+        description: 'Delete a work log entry from an issue',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            issueKey: {
+              type: 'string',
+              description: 'Issue key (e.g., PROJ-123)'
+            },
+            worklogId: {
+              type: 'string',
+              description: 'ID of the worklog to delete (from get_worklogs)'
+            }
+          },
+          required: ['issueKey', 'worklogId'],
+        },
+      },
+      {
+        name: 'get_my_worklogs',
+        description: 'Get all work logs by current user for a date range (timesheet). Use for tracking personal hours.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            startDate: {
+              type: 'string',
+              description: 'Start date (YYYY-MM-DD format)'
+            },
+            endDate: {
+              type: 'string',
+              description: 'End date (YYYY-MM-DD format)'
+            },
+            projectKey: {
+              type: 'string',
+              description: 'Optional: Filter by project key'
+            }
+          },
+          required: ['startDate', 'endDate'],
+        },
+      },
+      {
+        name: 'get_sprint_worklogs',
+        description: 'Get aggregate work logs for all issues in a sprint. Useful for sprint reporting and team capacity tracking.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            sprintId: {
+              type: 'string',
+              description: 'Sprint ID (optional - uses active sprint if not provided)'
+            },
+            boardId: {
+              type: 'string',
+              description: 'Board ID (optional - uses configured board if not provided)'
+            },
+            groupBy: {
+              type: 'string',
+              description: 'Group results by: user, issue, or day',
+              enum: ['user', 'issue', 'day']
+            }
+          },
+        },
+      },
 
       // Server tools
       {
@@ -1045,6 +1137,31 @@ export class JiraToolRegistry {
           });
         case 'get_worklogs':
           return await this.worklogService.getWorklogs(args.issueKey as string);
+        case 'update_worklog':
+          return await this.worklogService.updateWorklog({
+            issueKey: args.issueKey as string,
+            worklogId: args.worklogId as string,
+            timeSpent: args.timeSpent as string,
+            comment: args.comment as string,
+            startDate: args.startDate as string,
+          });
+        case 'delete_worklog':
+          return await this.worklogService.deleteWorklog({
+            issueKey: args.issueKey as string,
+            worklogId: args.worklogId as string,
+          });
+        case 'get_my_worklogs':
+          return await this.worklogService.getMyWorklogs({
+            startDate: args.startDate as string,
+            endDate: args.endDate as string,
+            projectKey: args.projectKey as string,
+          });
+        case 'get_sprint_worklogs':
+          return await this.worklogService.getSprintWorklogs({
+            sprintId: args.sprintId as string,
+            boardId: args.boardId as string,
+            groupBy: args.groupBy as 'user' | 'issue' | 'day',
+          });
 
         // Server tools
         case 'get_server_info':

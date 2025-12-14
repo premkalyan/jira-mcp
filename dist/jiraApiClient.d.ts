@@ -69,6 +69,15 @@ export declare class JiraApiClient {
     getServerInfo(): Promise<any>;
     addWorklog(issueIdOrKey: string, timeSpent: string, comment?: string, startedDate?: string): Promise<any>;
     getWorklogs(issueIdOrKey: string): Promise<any>;
+    getWorklogById(issueIdOrKey: string, worklogId: string): Promise<any>;
+    updateWorklog(issueIdOrKey: string, worklogId: string, data: {
+        timeSpent?: string;
+        comment?: string;
+        started?: string;
+    }): Promise<any>;
+    deleteWorklog(issueIdOrKey: string, worklogId: string): Promise<void>;
+    getWorklogsUpdatedSince(since: number): Promise<any>;
+    getWorklogsByIds(worklogIds: number[]): Promise<any>;
     createSprint(boardId: string, sprintData: {
         name: string;
         startDate?: string;

@@ -1,0 +1,82 @@
+# JIRA MCP Worklog Enhancement Specification
+
+## Current Implementation
+- `add_worklog` - Add a single worklog entry to an issue
+- `get_worklogs` - Get all worklogs for a specific issue
+
+## Proposed Enhancements
+
+### 1. update_worklog
+**Purpose**: Modify an existing worklog entry
+**Parameters**:
+- issueKey (required): Issue key (e.g., PROJ-123)
+- worklogId (required): ID of the worklog to update
+- timeSpent (optional): New time spent (e.g., "2h 30m")
+- comment (optional): Updated work description
+- startDate (optional): Updated start date (ISO format)
+
+**Use Case**: Correct timesheet entries, update descriptions
+
+### 2. delete_worklog
+**Purpose**: Remove a worklog entry from an issue
+**Parameters**:
+- issueKey (required): Issue key
+- worklogId (required): ID of the worklog to delete
+
+**Use Case**: Remove incorrect or duplicate entries
+
+### 3. get_my_worklogs (Timesheet)
+**Purpose**: Get all worklogs logged by current user for a date range
+**Parameters**:
+- startDate (required): Start of date range (ISO format)
+- endDate (required): End of date range (ISO format)
+- projectKey (optional): Filter by project
+
+**Use Case**: Generate timesheet, track personal work hours
+
+### 4. get_sprint_worklogs
+**Purpose**: Get aggregate worklogs for all issues in a sprint
+**Parameters**:
+- sprintId (optional): Sprint ID (uses active sprint if not provided)
+- boardId (optional): Board ID (uses configured board if not provided)
+- groupBy (optional): Group results by 'user' | 'issue' | 'day'
+
+**Use Case**: Sprint reporting, team capacity tracking
+
+### 5. get_worklog_summary
+**Purpose**: Get summary statistics for worklogs
+**Parameters**:
+- issueKeys (optional): Array of issue keys to summarize
+- sprintId (optional): Sprint ID
+- startDate (optional): Start date filter
+- endDate (optional): End date filter
+
+**Returns**:
+- Total time logged
+- Time by user
+- Time by day
+- Time by issue (if multiple)
+
+**Use Case**: Management reporting, capacity planning
+
+## API Endpoints Used
+- GET /rest/api/3/issue/{issueIdOrKey}/worklog - Get worklogs
+- POST /rest/api/3/issue/{issueIdOrKey}/worklog - Add worklog
+- PUT /rest/api/3/issue/{issueIdOrKey}/worklog/{id} - Update worklog
+- DELETE /rest/api/3/issue/{issueIdOrKey}/worklog/{id} - Delete worklog
+- GET /rest/api/3/worklog/updated - Get worklogs updated since
+- POST /rest/api/3/worklog/list - Get worklogs by IDs
+
+## Implementation Priority
+1. update_worklog - HIGH (common need)
+2. delete_worklog - HIGH (common need)
+3. get_my_worklogs - MEDIUM (timesheet feature)
+4. get_sprint_worklogs - MEDIUM (reporting)
+5. get_worklog_summary - LOW (can be calculated from existing data)
+
+## Response Format
+All tools return markdown-formatted responses with:
+- Success/error status
+- Data summary
+- Quick action suggestions
+- Formatted tables where appropriate
