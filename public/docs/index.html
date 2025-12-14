@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JIRA MCP Server - API Documentation</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css">
+  <style>
+    body { margin: 0; padding: 0; }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 { margin: 0; font-size: 24px; }
+    .header p { margin: 4px 0 0 0; opacity: 0.9; font-size: 14px; }
+    .header-links a {
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-left: 20px;
+      font-size: 14px;
+    }
+    .header-links a:hover { color: white; }
+    #swagger-ui { padding-bottom: 40px; }
+    .swagger-ui .topbar { display: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>JIRA MCP Server</h1>
+      <p>v1.0.3 - 41 Tools for Jira Integration via MCP</p>
+    </div>
+    <div class="header-links">
+      <a href="/">Home</a>
+      <a href="https://project-registry-henna.vercel.app/docs">All MCPs</a>
+    </div>
+  </div>
+  <div id="swagger-ui"></div>
+
+  <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+  <script>
+    const spec = {
+      openapi: '3.0.0',
+      info: {
+        title: 'JIRA MCP Server API',
+        version: '1.0.3',
+        description: 'Multi-tenant Jira integration via Model Context Protocol with Project Registry authentication. 41 tools for comprehensive Jira operations.',
+        contact: {
+          name: 'JIRA MCP',
+          url: 'https://jira-mcp-pi.vercel.app'
+        }
+      },
+      servers: [
+        { url: 'https://jira-mcp-pi.vercel.app', description: 'Production Server' },
+        { url: 'http://localhost:3000', description: 'Local Development' }
+      ],
+      security: [{ BearerAuth: [] }],
+      paths: {
+        '/api/health': {
+          get: {
+            summary: 'Health Check',
+            description: 'Check if the API is running and healthy',
+            operationId: 'healthCheck',
+            tags: ['System'],
+            security: [],
+            responses: {
+              '200': {
+                description: 'Service is healthy',
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        status: { type: 'string', example: 'healthy' },
+                        version: { type: 'string', example: '1.0.3' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        '/api/mcp': {
+          post: {
+            summary: 'Execute MCP Tool',
+            description: 'Execute a JIRA MCP tool via JSON-RPC 2.0',
+            operationId: 'executeTool',
+            tags: ['MCP Tools'],
+            requestBody: {
+              required: true,
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/MCPRequest' },
+                  examples: {
+                    search_issues: {
+                      summary: 'Search Issues with JQL',
+                      value: {
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'tools/call',
+                        params: {
+                          name: 'search_issues',
+                          arguments: { jql: 'assignee=currentUser() AND status!=Done', maxResults: 10 }
+                        }
+                      }
+                    },
+                    create_issue: {
+                      summary: 'Create Issue',
+                      value: {
+                        jsonrpc: '2.0',
+                        id: 2,
+                        method: 'tools/call',
+                        params: {
+                          name: 'create_issue',
+                          arguments: { projectKey: 'PROJ', issueType: 'Story', summary: 'New feature', description: 'Description here' }
+                        }
+                      }
+                    },
+                    get_boards: {
+                      summary: 'Get Boards',
+                      value: {
+                        jsonrpc: '2.0',
+                        id: 3,
+                        method: 'tools/call',
+                        params: { name: 'get_boards', arguments: {} }
+                      }
+                    },
+                    add_worklog: {
+                      summary: 'Add Worklog',
+                      value: {
+                        jsonrpc: '2.0',
+                        id: 4,
+                        method: 'tools/call',
+                        params: {
+                          name: 'add_worklog',
+                          arguments: { issueKey: 'PROJ-123', timeSpent: '2h', comment: 'Worked on implementation' }
+                        }
+                      }
+                    },
+                    transition_issue: {
+                      summary: 'Transition Issue',
+                      value: {
+                        jsonrpc: '2.0',
+                        id: 5,
+                        method: 'tools/call',
+                        params: {
+                          name: 'transition_issue',
+                          arguments: { issueKey: 'PROJ-123', transitionName: 'Done' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            responses: {
+              '200': {
+                description: 'Tool executed successfully',
+                content: {
+                  'application/json': {
+                    schema: { $ref: '#/components/schemas/MCPResponse' }
+                  }
+                }
+              },
+              '401': { $ref: '#/components/responses/UnauthorizedError' },
+              '400': { description: 'Bad request' }
+            }
+          }
+        }
+      },
+      components: {
+        securitySchemes: {
+          BearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            description: 'Project API Key from Project Registry. Register at https://project-registry-henna.vercel.app'
+          }
+        },
+        schemas: {
+          MCPRequest: {
+            type: 'object',
+            required: ['jsonrpc', 'id', 'method', 'params'],
+            properties: {
+              jsonrpc: { type: 'string', example: '2.0' },
+              id: { type: 'integer', example: 1 },
+              method: { type: 'string', example: 'tools/call' },
+              params: {
+                type: 'object',
+                properties: {
+                  name: {
+                    type: 'string',
+                    enum: [
+                      'get_boards', 'get_board_details', 'get_board_issues', 'get_board_sprints',
+                      'search_issues', 'get_issue_details', 'create_issue', 'update_issue', 'transition_issue', 'add_comment',
+                      'add_worklog', 'get_worklogs', 'update_worklog', 'delete_worklog', 'get_my_worklogs', 'get_sprint_worklogs',
+                      'get_current_user', 'search_users', 'get_user_details',
+                      'get_projects', 'get_project_details', 'get_server_info',
+                      'create_sprint', 'get_active_sprint', 'get_sprint_details', 'start_sprint', 'complete_sprint',
+                      'add_issues_to_sprint', 'remove_issues_from_sprint',
+                      'link_issues', 'get_issue_links', 'get_link_types',
+                      'create_subtask', 'get_subtasks',
+                      'get_story_points', 'set_story_points',
+                      'bulk_create_issues', 'bulk_update_issues', 'bulk_transition_issues', 'bulk_assign_issues', 'bulk_update_story_points'
+                    ]
+                  },
+                  arguments: { type: 'object' }
+                }
+              }
+            }
+          },
+          MCPResponse: {
+            type: 'object',
+            properties: {
+              jsonrpc: { type: 'string', example: '2.0' },
+              id: { type: 'integer' },
+              result: {
+                type: 'object',
+                properties: {
+                  content: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        type: { type: 'string', example: 'text' },
+                        text: { type: 'string' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          UnauthorizedError: {
+            description: 'Authentication required',
+            content: {
+              'application/json': {
+                example: { error: 'Authentication required. Provide Authorization: Bearer {api_key} header.' }
+              }
+            }
+          }
+        }
+      },
+      tags: [
+        { name: 'System', description: 'Health and status' },
+        { name: 'MCP Tools', description: '41 tools: Boards, Issues, Sprints, Worklogs, Users, Projects, Bulk Operations' }
+      ]
+    };
+
+    window.onload = function() {
+      SwaggerUIBundle({
+        spec: spec,
+        dom_id: '#swagger-ui',
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+        layout: 'BaseLayout'
+      });
+    };
+  </script>
+</body>
+</html>
