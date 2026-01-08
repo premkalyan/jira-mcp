@@ -63,7 +63,8 @@ const TOOLS = [
   { name: 'bulk_update_issues', description: 'Update multiple issues at once', inputSchema: { type: 'object', properties: { updates: { type: 'array' } }, required: ['updates'] } },
   { name: 'bulk_transition_issues', description: 'Transition multiple issues', inputSchema: { type: 'object', properties: { issueKeys: { type: 'array' }, transitionName: { type: 'string' } }, required: ['issueKeys', 'transitionName'] } },
   { name: 'bulk_assign_issues', description: 'Assign multiple issues to a user', inputSchema: { type: 'object', properties: { issueKeys: { type: 'array' }, assigneeId: { type: 'string' } }, required: ['issueKeys'] } },
-  { name: 'bulk_update_story_points', description: 'Update story points for multiple issues', inputSchema: { type: 'object', properties: { updates: { type: 'array' } }, required: ['updates'] } }
+  { name: 'bulk_update_story_points', description: 'Update story points for multiple issues', inputSchema: { type: 'object', properties: { updates: { type: 'array' } }, required: ['updates'] } },
+  { name: 'link_story_to_epic', description: 'Link a story/task to an epic by setting its parent. Works for Next-Gen (team-managed) projects.', inputSchema: { type: 'object', properties: { issueKey: { type: 'string', description: 'Story or Task key to link (e.g., PROJ-123)' }, epicKey: { type: 'string', description: 'Epic key to link to (e.g., PROJ-50)' } }, required: ['issueKey', 'epicKey'] } }
 ];
 
 export default async function handler(req, res) {

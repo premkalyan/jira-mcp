@@ -882,6 +882,25 @@ export class JiraToolRegistry {
                     required: ['parentIssueKey'],
                 },
             },
+            // Link Story to Epic tool
+            {
+                name: 'link_story_to_epic',
+                description: 'Link a story or task to an epic by setting its parent. Works for Next-Gen (team-managed) Jira projects.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        issueKey: {
+                            type: 'string',
+                            description: 'Story or Task key to link (e.g., PROJ-123)'
+                        },
+                        epicKey: {
+                            type: 'string',
+                            description: 'Epic key to link to (e.g., PROJ-50)'
+                        }
+                    },
+                    required: ['issueKey', 'epicKey'],
+                },
+            },
             // Bulk Operations tools (Priority 5 - Critical)
             {
                 name: 'bulk_create_issues',
@@ -1217,6 +1236,12 @@ export class JiraToolRegistry {
                     });
                 case 'get_subtasks':
                     return await this.issueService.getSubtasks(args.parentIssueKey);
+                // Link Story to Epic
+                case 'link_story_to_epic':
+                    return await this.issueService.updateIssue({
+                        issueKey: args.issueKey,
+                        parentKey: args.epicKey,
+                    });
                 // Bulk Operations tools (Priority 5 - Critical)
                 case 'bulk_create_issues':
                     return await this.bulkOperationsService.bulkCreateIssues({
